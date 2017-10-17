@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <title>pChat &mdash; Private Chatroom</title>
+  <link rel="stylesheet" href="@Url.Content("~/Content/app.css")">
+</head>
+<body>
+		@{
+		    var currentUser = ViewBag.currentUser;
+		}
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-inverse">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="#">pChat - @currentUser </a>
+        </div>
+        <ul class="nav navbar-nav navbar-right">
+          <li><a href="#">Log Out</a></li>
+        </ul>
+      </div>
+    </nav>
+    <!-- / Navigation Bar -->
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-12 col-md-3">
+          <aside class="main visible-md visible-lg">
+            <div class="row">
+              <div class="col-xs-12">
+                <div class="panel panel-default users__bar">
+                  <div class="panel-heading users__heading">
+                    Online Users (1)
+                  </div>
+                  <div class="panel-body users__body">
+                    <ul class="list-group">
+                    @if( @currentUser == "Daenerys" ) {
+                        <li class="user__item">
+                            <div class="avatar"></div> <a href="#">Merry</a>
+                        </li>
+                    } else if( @currentUser == "Jon") {
+                        <li class="user__item">
+                            <div class="avatar"></div> <a href="#">Iby</a>
+                        </li>
+                    }
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+
+        </div>
+        <div class="col-xs-12 col-md-9 chat__body">
+          <div class="row">
+            <div class="col-xs-12">
+              <ul class="list-group chat__main">
+                <div class="row __chat__par__">
+                  <div class="__chat__ from__chat">
+                    <p>Hey are we still going???</p>
+                  </div>
+                </div>
+              </ul>
+            </div>
+            <div class="chat__type__body">
+              <div class="chat__type">
+                <textarea id="msg_box" placeholder="Type your message"></textarea>
+              </div>
+            </div>
+            <div class="chat__typing">
+              <span id="typerDisplay"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="@Url.Content("~/Content/app.js")"></script>
+    <script src="https://js.pusher.com/4.0/pusher.min.js"></script>
+    <script>
+        var currentUser = "@currentUser";
+
+        // Returns a function, that, as long as it continues to be invoked, will not
+		// be triggered. The function will be called after it stops being called for
+		// N milliseconds. If `immediate` is passed, trigger the function on the
+		// leading edge, instead of the trailing.
+		function debounce(func, wait, immediate) {
+		    var timeout;
+		    return function() {
+		        var context = this, args = arguments;
+		        var later = function() {
+		            timeout = null;
+		            if (!immediate) func.apply(context, args);
+		        };
+		        var callNow = immediate && !timeout;
+		        clearTimeout(timeout);
+		        timeout = setTimeout(later, wait);
+		        if (callNow) func.apply(context, args);
+		    };
+		};
+
+        //Pusher client side setup
+        var pusher = new Pusher('913866e45b4b1e9daf1a', {
+            cluster:'mt1'
+        });
+        var socketId = null;
+        pusher.connection.bind('connected', function() {
+          socketId = pusher.connection.socket_id;
+        });
+        ////////////////////////////////////
+
+        var isTypingCallback = debounce( function() {
+            $.post('/chat/typing', {
+                typer: currentUser,
+			    socket_id: socketId // pass socket_id parameter to be used by server
+			});
+        }, 600, true);
+			
+        $('#msg_box').on('keydown',isTypingCallback);
+        $('#msg_box').on('keyup',isTypingCallback);
+
+        var channel = pusher.subscribe('chat');
+
+        channel.bind('typing', function(data) {
+			$('#typerDisplay').text( data.typer + ' is typing...');
+			
+            $('.chat__typing').fadeIn(100, function() {
+                $('.chat__type__body').addClass('typing_display__open');
+			}).delay(1000).fadeOut(300, function(){
+                $('.chat__type__body').removeClass('typing_display__open');
+			});
+        });
+    </script>
+</body>
+</html>
